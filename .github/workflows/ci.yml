@@ -1,0 +1,90 @@
+name: QA Automation CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality-api:
+    name: Lint, API tests and coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: ruff check app tests
+      - name: API regression suite
+        run: |
+          mkdir -p reports
+          python -m pytest tests/api -q --cov=app --cov-report=term-missing --cov-report=xml:reports/coverage.xml --html=reports/api-report.html --self-contained-html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-test-report
+          path: reports/
+
+  ui-e2e:
+    name: UI end-to-end tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Start target application
+        run: uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/qa-app.log 2>&1 &
+      - name: Wait for health
+        run: |
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8000/health && exit 0
+            sleep 2
+          done
+          cat /tmp/qa-app.log
+          exit 1
+      - name: UI smoke and regression suite
+        run: |
+          mkdir -p reports
+          python -m pytest tests/ui -q --browser chromium --html=reports/ui-report.html --self-contained-html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test-report
+          path: |
+            reports/
+            test-results/
+
+  container:
+    name: Container smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t qa-automation-lab:ci .
+      - run: docker run -d --name qa-target -p 8000:8000 qa-automation-lab:ci
+      - name: Container health smoke test
+        run: |
+          for i in {1..20}; do
+            curl -fsS http://127.0.0.1:8000/health && exit 0
+            sleep 2
+          done
+          docker logs qa-target
+          exit 1
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: qa-automation-lab:ci
+          format: table
+          exit-code: "1"
+          severity: CRITICAL
+          ignore-unfixed: true
+      - if: always()
+        run: docker rm -f qa-target || true
