@@ -25,7 +25,7 @@ jobs:
       - name: API regression suite
         run: |
           mkdir -p reports
-          pytest tests/api -q --cov=app --cov-report=term-missing --cov-report=xml:reports/coverage.xml --html=reports/api-report.html --self-contained-html
+          python -m pytest tests/api -q --cov=app --cov-report=term-missing --cov-report=xml:reports/coverage.xml --html=reports/api-report.html --self-contained-html
       - uses: actions/upload-artifact@v4
         with:
           name: api-test-report
@@ -55,7 +55,7 @@ jobs:
       - name: UI smoke and regression suite
         run: |
           mkdir -p reports
-          pytest tests/ui -q --browser chromium --html=reports/ui-report.html --self-contained-html
+          python -m pytest tests/ui -q --browser chromium --html=reports/ui-report.html --self-contained-html
       - uses: actions/upload-artifact@v4
         if: always()
         with:
