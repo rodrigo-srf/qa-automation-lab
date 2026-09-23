@@ -31,13 +31,45 @@ def login(payload: LoginRequest):
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return """<!doctype html><html><head><meta charset="utf-8"><title>QA Automation Lab</title></head>
-<body><main><h1>QA Automation Lab</h1><p id="status">Application ready</p>
-<form id="login-form"><label>Username <input id="username" name="username"></label>
-<label>Password <input id="password" name="password" type="password"></label>
-<button id="login-button" type="submit">Login</button></form><p id="result"></p></main>
-<script>
-const form=document.getElementById('login-form');form.addEventListener('submit', async (e)=>{e.preventDefault();
-const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('username').value,password:document.getElementById('password').value})});
-document.getElementById('result').textContent=r.ok?'Login successful':'Login failed';});
-</script></body></html>"""
+    return """
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>QA Automation Lab</title>
+</head>
+<body>
+  <main>
+    <h1>QA Automation Lab</h1>
+    <p id="status">Application ready</p>
+    <form id="login-form">
+      <label>Username <input id="username" name="username"></label>
+      <label>Password <input id="password" name="password" type="password"></label>
+      <button id="login-button" type="submit">Login</button>
+    </form>
+    <p id="result"></p>
+  </main>
+  <script>
+    const form = document.getElementById("login-form");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value
+      };
+
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+
+      document.getElementById("result").textContent =
+        response.ok ? "Login successful" : "Login failed";
+    });
+  </script>
+</body>
+</html>
+"""
